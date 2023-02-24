@@ -3,12 +3,12 @@ import pygame
 
 
 class Town:
-    def __init__(self, height, width, background_color) -> None:
+    def __init__(self, rows, cols, height, width, background_color) -> None:
         
         self.height = height
         self.width = width
-        self.rows = 6
-        self.cols = 6
+        self.rows = rows
+        self.cols = cols
         self.block_size = height//self.rows
         self.background_color = background_color
         self.black_color = (0,0,0)
@@ -94,6 +94,16 @@ class Town:
     def display(self,):
         self.createTown()
         pygame.display.set_caption('The Town')
+
+
+    
+
+        
+        
+
+
+
+
 
         
     
