@@ -196,7 +196,7 @@ class QLearning(Town):
         cells = np.where([~np.isnan(self.R[cell,])])[1]
         return cells
 
-    def run(self,n_episodes,time_steps, epsilon, alpha, gamma):
+    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, epsilon_decay=0.99):
         self.reset_R_matrix()
         self.reset_Q_matrix()
         
@@ -206,8 +206,9 @@ class QLearning(Town):
             s = self.getStateNum(self.prince_start)
             R_tot_cur_episode = 0
             R_copy = self.R.copy()
-            for t in range(time_steps): 
-                #find all the available choices of states considering all the actions:
+            # apply epsilon decay
+            epsilon = epsilon * epsilon_decay
+            for t in range(time_steps):
                 available_actions = np.where(~np.isnan(R_copy[s]))[0]
                 #print(available_actions)
                 #print(self.R[s])

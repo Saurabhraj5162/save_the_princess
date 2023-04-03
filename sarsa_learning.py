@@ -212,7 +212,7 @@ class SARSA(Town):
         r = self.R[state, action]
         return s_new
 
-    def run(self,n_episodes,time_steps, epsilon, alpha, gamma):
+    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, decay_rate):
         self.reset_R_matrix()
         self.reset_Q_matrix()
 
@@ -222,8 +222,9 @@ class SARSA(Town):
             s = self.getStateNum(self.prince_start)
             R_tot_cur_episode = 0
             R_copy = self.R.copy()
-            a = self.chooseAction(s, epsilon) # This added!
-
+    
+            a = self.chooseAction(s, epsilon) # choose initial action
+            epsilon *= decay_rate # decay epsilon
             for t in range(time_steps):
                 # update the environment
                 r = R_copy[s, a]
