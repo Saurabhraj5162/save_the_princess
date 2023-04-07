@@ -196,7 +196,7 @@ class QLearning(Town):
         cells = np.where([~np.isnan(self.R[cell,])])[1]
         return cells
 
-    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, epsilon_decay=0.99):
+    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, epsilon_decay):
         self.reset_R_matrix()
         self.reset_Q_matrix()
         
@@ -207,7 +207,13 @@ class QLearning(Town):
             R_tot_cur_episode = 0
             R_copy = self.R.copy()
             # apply epsilon decay
-            epsilon = epsilon * epsilon_decay
+            # reduce exploration rate
+            if epsilon >= 0.5:
+                epsilon *= 0.999999
+            else:
+                epsilon *= 0.99
+            epsilon = max(epsilon, 0.01)
+            #epsilon = epsilon * epsilon_decay
             for t in range(time_steps):
                 available_actions = np.where(~np.isnan(R_copy[s]))[0]
                 #print(available_actions)
