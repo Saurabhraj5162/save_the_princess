@@ -212,7 +212,7 @@ class SARSA(Town):
         r = self.R[state, action]
         return s_new
 
-    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, decay_rate=0.99):
+    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, decay_rate=0.999999):
         self.reset_R_matrix()
         self.reset_Q_matrix()
 

@@ -8,6 +8,7 @@ from q_learning import QLearning
 time_steps = 2000
 alpha_lst = [0.4, 0.1]
 gamma_lst = [0.4, 0.1]
+temp_lst = [0.9]
 epsilon_lst = [0.9, 0.6, 0.4, 0.1]
 epsilon_decay_lst = [0.999999]
 colors= ['r', 'b', 'g', 'y', 'c']
@@ -21,21 +22,26 @@ gamma_rewards = {}
 alpha_gamma_rewards  = {}
 epsilon_rewards  = {}
 epsilon_decay_rewards  = {}
+temp_rewards = {}
 
-for epsilon_decay in epsilon_decay_lst:
-    R_total = Q.run(10000,time_steps,epsilon=0.9, alpha=0.4, gamma=0.4, epsilon_decay = 0.999999)
-    epsilon_decay_rewards[epsilon_decay] = R_total
+# for epsilon_decay in epsilon_decay_lst:
+#     R_total = Q.run(10000,time_steps,epsilon=0.9, alpha=0.4, gamma=0.4, epsilon_decay = 0.999999)
+#     epsilon_decay_rewards[epsilon_decay] = R_total
+
+for temperature in temp_lst:
+    R_total = Q.run_softmax(10000,time_steps,temperature, alpha=0.4, gamma=0.4)
+    temp_rewards[temperature] = R_total
 
 
-for epsilon_decay, R_total in epsilon_decay_rewards.items():
+for temperature, R_total in temp_rewards.items():
 
     Rtot_avg = np.array(R_total).cumsum() / np.arange(1, len(R_total) + 1)
-    plt.plot(np.arange(500, len(Rtot_avg)), Rtot_avg[500:], label=f'alpha=0.4,gamma=0.4,high_epsilon_decay = 0.999999, low_epsilon_decay = 0.99')
+    plt.plot(np.arange(500, len(Rtot_avg)), Rtot_avg[500:], label=f'alpha=0.4,gamma=0.4,temperature={temperature}')
     plt.legend(loc="lower right")
 
 plt.xlabel('episodes')
 plt.ylabel('R')
-plt.title('Average total reward with final hyperparameters', fontsize=12, pad=20)
+plt.title('Average total reward with softmax policy', fontsize=12, pad=20)
 plt.show()
 
 # for alpha in alpha_lst:

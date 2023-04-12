@@ -274,6 +274,75 @@ class QLearning(Town):
         print(f'Hit Enemey {enemey_hits} times.')
         return R_total
     
+    def run_softmax(self, n_episodes, time_steps, temperature, alpha, gamma):
+        self.reset_R_matrix()
+        self.reset_Q_matrix()
+    
+        R_total = []
+        castle_hits, enemy_hits = 0, 0
+        for episode in range(n_episodes):
+            s = self.getStateNum(self.prince_start)
+            R_tot_cur_episode = 0
+            R_copy = self.R.copy()
+    
+            # compute action probabilities with softmax policy
+            for t in range(time_steps):
+                available_actions = np.where(~np.isnan(R_copy[s]))[0]
+    
+                # calculate action probabilities using softmax
+                available_q_values = np.array([self.Q[s, a] for a in available_actions])
+                action_probs = np.exp(available_q_values / temperature)
+                if np.isnan(np.sum(action_probs)):
+                    action_probs = np.ones(len(action_probs)) / len(action_probs)
+                else:
+                    action_probs /= np.sum(action_probs)
+                a = np.random.choice(available_actions, p=action_probs)
+    
+                # updating the environment
+                r = R_copy[s, a]
+                s_old = s
+                s = a
+    
+                # Q value updating
+                error = r + gamma * (max(self.Q[s]) - self.Q[s_old, a])
+                q_updated = self.Q[s_old, a] + alpha * error
+                self.Q[s_old, a] = q_updated
+    
+                # accumulating the rewards
+                R_tot_cur_episode += r
+    
+                # logic to check the agent does not try to reach princess_prison again
+                # also We need to activate bar and restaurant only when prince has gotten the princess
+                if a == self.princess_start_state:
+                    self.deactivatePrison(a, R_copy)
+                    self.activateBarRestCastle(R_copy)
+    
+                # logic to check the agent does not try to reach restaurant again
+                if a == self.restaurant_state:
+                    self.deactivateRestaurant(R_copy)
+                if a == self.pub_state:
+                    self.deactivateBar(R_copy)
+    
+                if s == self.goal_state:
+                    # print('REACHED TO THE CASTLE!')
+                    castle_hits += 1
+                    break
+    
+                if s in self.enemy_states:
+                    enemy_hits += 1
+                    break
+    
+            # reduce the temperature parameter over time to shift from exploration to exploitation
+            temperature *= 0.95
+    
+            R_total.append(R_tot_cur_episode)
+            print('Episode {} finished. Q matrix values:\n{}'.format(episode, self.Q.round(1)))
+        
+        print(f'Reached Castle {castle_hits} times.')
+        print(f'Hit Enemy {enemy_hits} times.')
+        return R_total
+
+    
     def plot_rewards(self, R_total, alpha, epsilon, gamma):
         R_total_avg = np.array(R_total).cumsum() / np.arange(1, len(R_total) + 1)
         plt.plot(range(50,len(R_total)), R_total_avg[50:])
