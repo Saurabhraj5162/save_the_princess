@@ -2,7 +2,7 @@ import numpy as np
 from Environment import Town
 import matplotlib.pyplot as plt
 
-class QLearning(Town):
+class SARSA(Town):
 
     def __init__(self, rows, cols, height, width, background_color) -> None:
         super().__init__(rows, cols,height, width, background_color)
@@ -196,150 +196,79 @@ class QLearning(Town):
         cells = np.where([~np.isnan(self.R[cell,])])[1]
         return cells
 
-    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, epsilon_decay):
+    def chooseAction(self, state, epsilon):
+        available_actions = np.where(~np.isnan(self.R[state]))[0]
+        if np.random.uniform() > epsilon:
+            action = np.random.choice(available_actions)
+        else:
+            q_values = [self.Q[state, a] for a in available_actions]
+            max_q = np.max(q_values)
+            best_actions = available_actions[np.where(q_values == max_q)]
+            action = np.random.choice(best_actions)
+        return action
+    
+    def takeAction(self, state, action):
+        s_new = action
+        r = self.R[state, action]
+        return s_new
+
+    def run(self, n_episodes, time_steps, epsilon, alpha, gamma, decay_rate=0.999999):
         self.reset_R_matrix()
         self.reset_Q_matrix()
-        
+
         R_total = []
         castle_hits, enemey_hits= 0, 0
         for episode in range(n_episodes):
             s = self.getStateNum(self.prince_start)
             R_tot_cur_episode = 0
             R_copy = self.R.copy()
-            # apply epsilon decay
-            # reduce exploration rate
-            if epsilon >= 0.5:
-                epsilon *= 0.999999
-            else:
-                epsilon *= 0.99
-            epsilon = max(epsilon, 0.01)
-            #epsilon = epsilon * epsilon_decay
+    
+            a = self.chooseAction(s, epsilon) # choose initial action
+            epsilon *= decay_rate # decay epsilon
             for t in range(time_steps):
-                available_actions = np.where(~np.isnan(R_copy[s]))[0]
-                #print(available_actions)
-                #print(self.R[s])
-                #get q value corresponding to each available actions:
-                available_q_values = [self.Q[s,idx] for idx in available_actions]
-                #print(available_q_values)
-                #now we calculate the best action based on greed of q value:
-                best_actions = available_actions[np.where(available_q_values == max(available_q_values))]
-                #print(best_actions)
-                best_action_q_vals = [self.Q[s,x] for x in best_actions] # takeAction
-
-                #choosing action based on epsilon-greedy policy # chooseAction
-                if np.random.uniform() > epsilon:
-                    a = np.random.choice(available_actions)
-                else:
-                    a = np.random.choice(best_actions)
-
-                #updating the environment:
-                r = R_copy[s,a]
-                s_old = s
-                s = a
-
-                 # Q value updating
-                error = R_copy[s_old,a] + gamma*(max(self.Q[s]) - self.Q[s_old,a])
-                q_updated= self.Q[s_old,a] + alpha*(error)
-
-                self.Q[s_old,a] = q_updated
-
-                #accumualting the rewards:
-                R_tot_cur_episode += R_copy[s_old,a]
-
-                #logic to check the agent does not try to reach princess_prison again:
-                #also We need to activate bar and restaurant only when prince has gotten the princess:
-                if a == self.princess_start_state:
-                    self.deactivatePrison(a,R_copy)
-                    self.activateBarRestCastle(R_copy)
-                
-                
-                #logic to check the agent does not try to reach restaurant again:
-                if a == self.restaurant_state:
-                    self.deactivateRestaurant(R_copy)
-                if a == self.pub_state:
-                    self.deactivateBar(R_copy)
-
-                if s == self.goal_state:
-                    #print('REACHED TO THE CASTLE!')
-                    castle_hits += 1
-                    break
-
-                if s in self.enemy_states:
-                    enemey_hits +=1
-                    break
-
-            R_total.append(R_tot_cur_episode)
-            print('Episode {} finished. Q matrix values:\n{}'.format(episode,self.Q.round(1)))
-        print(f'Reached Castle {castle_hits} times.')
-        print(f'Hit Enemey {enemey_hits} times.')
-        return R_total
-    
-    def run_softmax(self, n_episodes, time_steps, temperature, alpha, gamma):
-        self.reset_R_matrix()
-        self.reset_Q_matrix()
-    
-        R_total = []
-        castle_hits, enemy_hits = 0, 0
-        for episode in range(n_episodes):
-            s = self.getStateNum(self.prince_start)
-            R_tot_cur_episode = 0
-            R_copy = self.R.copy()
-    
-            # compute action probabilities with softmax policy
-            for t in range(time_steps):
-                available_actions = np.where(~np.isnan(R_copy[s]))[0]
-    
-                # calculate action probabilities using softmax
-                available_q_values = np.array([self.Q[s, a] for a in available_actions])
-                action_probs = np.exp(available_q_values / temperature)
-                if np.isnan(np.sum(action_probs)):
-                    action_probs = np.ones(len(action_probs)) / len(action_probs)
-                else:
-                    action_probs /= np.sum(action_probs)
-                a = np.random.choice(available_actions, p=action_probs)
-    
-                # updating the environment
+                # update the environment
                 r = R_copy[s, a]
-                s_old = s
-                s = a
-    
-                # Q value updating
-                error = r + gamma * (max(self.Q[s]) - self.Q[s_old, a])
-                q_updated = self.Q[s_old, a] + alpha * error
-                self.Q[s_old, a] = q_updated
-    
-                # accumulating the rewards
+                s_new = self.takeAction(s, a)
+                a_new = self.chooseAction(s_new, epsilon)
+
+                # Q-value update using SARSA
+                q_old = self.Q[s, a]
+                q_new = self.Q[s_new, a_new]
+                error = r + gamma * q_new - q_old
+                q_updated = q_old + alpha * error
+                self.Q[s, a] = q_updated
+
+                # accumulate the rewards
                 R_tot_cur_episode += r
-    
+
                 # logic to check the agent does not try to reach princess_prison again
                 # also We need to activate bar and restaurant only when prince has gotten the princess
                 if a == self.princess_start_state:
                     self.deactivatePrison(a, R_copy)
                     self.activateBarRestCastle(R_copy)
-    
+
                 # logic to check the agent does not try to reach restaurant again
                 if a == self.restaurant_state:
                     self.deactivateRestaurant(R_copy)
                 if a == self.pub_state:
                     self.deactivateBar(R_copy)
-    
-                if s == self.goal_state:
-                    # print('REACHED TO THE CASTLE!')
+
+                if s_new == self.goal_state:
                     castle_hits += 1
                     break
-    
-                if s in self.enemy_states:
-                    enemy_hits += 1
+
+                if s_new in self.enemy_states:
+                    enemey_hits += 1
                     break
-    
-            # reduce the temperature parameter over time to shift from exploration to exploitation
-            temperature *= 0.95
-    
+
+                # update the current state and action
+                s = s_new
+                a = a_new
+
             R_total.append(R_tot_cur_episode)
-            print('Episode {} finished. Q matrix values:\n{}'.format(episode, self.Q.round(1)))
-        
+            print('Episode {} finished. Q matrix values:\n{}'.format(episode,self.Q.round(1)))
         print(f'Reached Castle {castle_hits} times.')
-        print(f'Hit Enemy {enemy_hits} times.')
+        print(f'Hit Enemey {enemey_hits} times.')
         return R_total
 
     
